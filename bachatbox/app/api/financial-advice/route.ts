@@ -42,21 +42,22 @@ export async function POST(req: NextRequest) {
     const balance = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
     
-    // Detailed expense analysis
+    // Detailed expense analysis with explicit typing for the accumulator
     const expensesByCategory = transactions
       .filter((t: any) => t.type === 'expense')
-      .reduce((acc: any, t: any) => {
+      .reduce((acc: Record<string, number>, t: any) => {
         const category = t.description || 'Other';
         acc[category] = (acc[category] || 0) + t.amount;
         return acc;
-      }, {});
+      }, {} as Record<string, number>);
 
     const sortedExpenses = Object.entries(expensesByCategory)
-      .sort(([,a]: any, [,b]: any) => b - a);
+      .sort(([,a], [,b]) => (b as number) - (a as number));
 
-    const topSpendingCategory = sortedExpenses[0];
-    const secondHighest = sortedExpenses[1];
-    const thirdHighest = sortedExpenses[2];
+    // Explicitly cast these to help TypeScript know they are [string, number]
+    const topSpendingCategory = sortedExpenses[0] as [string, number] | undefined;
+    const secondHighest = sortedExpenses[1] as [string, number] | undefined;
+    const thirdHighest = sortedExpenses[2] as [string, number] | undefined;
 
     // Analyze spending frequency and patterns
     const expenseTransactions = transactions.filter((t: any) => t.type === 'expense');
@@ -148,18 +149,18 @@ export async function POST(req: NextRequest) {
     }
 
     Examples of the tone I want:
-    - "Holy cow! You spent ₹${topSpendingCategory ? Math.round(topSpendingCategory[1]) : 0} on ${topSpendingCategory ? topSpendingCategory[0] : 'expenses'} - that's more than most people's rent!"
+    - "Holy cow! You spent ₹${topSpendingCategory ? Math.round(topSpendingCategory[1] as number) : 0} on ${topSpendingCategory ? topSpendingCategory[0] : 'expenses'} - that's more than most people's rent!"
     - "I noticed you're spending ₹X on Y every Z days - that adds up to ₹ABC monthly!"
-    - "Your ${secondHighest ? secondHighest[0] : 'second biggest'} expense is ₹${secondHighest ? Math.round(secondHighest[1]) : 0} - could we cut this by even 20%?"
+    - "Your ${secondHighest ? secondHighest[0] : 'second biggest'} expense is ₹${secondHighest ? Math.round(secondHighest[1] as number) : 0} - could we cut this by even 20%?"
 
     Be specific, caring, and use their actual numbers throughout. Make it feel like you really looked at their data!
     `;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
-        temperature: 0.8, // More creative for personalized responses
+        temperature: 0.8, 
       }
     });
 
@@ -171,7 +172,6 @@ export async function POST(req: NextRequest) {
     try {
       parsedAdvice = JSON.parse(adviceText);
       
-      // Validate that responses are actually personalized (not generic)
       const requiredFields = ['healthScore', 'healthStatus', 'topSpending', 'savingsOpportunity', 
                             'monthlyTrend', 'budgetStatus', 'recommendations', 'insights', 'goals'];
       
@@ -186,12 +186,13 @@ export async function POST(req: NextRequest) {
     } catch (parseError) {
       console.error('JSON parsing failed, using enhanced fallback:', parseError);
       
-      // Much more personalized fallback based on actual data
+      // FIX: Explicit casting here ensures 'topAmount' and 'secondAmount' are numbers, not unknown
       const getPersonalizedAdvice = () => {
         const topCategory = topSpendingCategory ? topSpendingCategory[0] : 'expenses';
-        const topAmount = topSpendingCategory ? topSpendingCategory[1] : 0;
+        const topAmount = topSpendingCategory ? (topSpendingCategory[1] as number) : 0;
+        
         const secondCategory = secondHighest ? secondHighest[0] : 'other expenses';
-        const secondAmount = secondHighest ? secondHighest[1] : 0;
+        const secondAmount = secondHighest ? (secondHighest[1] as number) : 0;
         
         return {
           healthScore: Math.min(Math.max(Math.round(savingsRate + 40), 10), 95),
