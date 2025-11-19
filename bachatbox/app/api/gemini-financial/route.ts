@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Groq } from 'groq-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 import { adviceCache, cosineSim, compactContext } from '@/lib/adviceCache';
 
@@ -18,14 +18,14 @@ interface RequestBody {
   userId: string;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
 export async function POST(request: NextRequest) {
   let languageFallback: 'en' | 'hi' = 'en';
 
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: 'GROQ API key not configured' }, { status: 500 });
     }
 
     const body: RequestBody = await request.json();
@@ -38,45 +38,39 @@ export async function POST(request: NextRequest) {
 
     // RAG STEP 1: Check cache first for similar questions (saves 70% API calls)
     const cacheKey = `${userId}_${message.toLowerCase().trim()}`;
-    
+
     // Exact match first
     const exactMatch = adviceCache.get(cacheKey);
     if (exactMatch) {
-      return NextResponse.json({ 
-        message: exactMatch, 
+      return NextResponse.json({
+        message: exactMatch,
         source: 'cache_exact',
-        cached: true 
+        cached: true
       });
     }
 
     // Fuzzy match for similar questions
     for (const [cachedQuestion, cachedAnswer] of adviceCache.entries()) {
       if (cosineSim(cachedQuestion.split('_')[1] || '', message) > 0.85) {
-        return NextResponse.json({ 
-          message: cachedAnswer, 
+        return NextResponse.json({
+          message: cachedAnswer,
           source: 'cache_similar',
-          cached: true 
+          cached: true
         });
       }
     }
 
-    // RAG STEP 2: If no cache hit, prepare optimized context
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: { temperature: 0.9 },
-    });
-
-    // RESOURCE OPTIMIZATION: Compact financial context (reduces tokens by 60%)
+    // RAG STEP 2: Prepare compact financial context
     const financialContext = compactContext(financialData);
 
     // Emotional context based on financial health
     const getEmotionalContext = (balance: number, lang: 'en' | 'hi') => {
       if (balance < -5000) {
-        return lang === 'hi' 
+        return lang === 'hi'
           ? "मैं समझता हूं कि यह कठिन समय है। आप अकेले नहीं हैं।"
           : "I understand this is a challenging time. You're not alone.";
       } else if (balance > 10000) {
-        return lang === 'hi' 
+        return lang === 'hi'
           ? "आपकी मेहनत रंग ला रही है! मैं आपकी वित्तीय यात्रा में साथ हूं।"
           : "Your hard work is paying off! I'm here to support your journey.";
       }
@@ -98,7 +92,6 @@ ${emotionalNote}
 - व्यक्तिगत स्पर्श जोड़ना
 
 60-100 शब्दों में गर्मजोशी से जवाब दें।`
-      
       : `You are BudgetBot - a compassionate, understanding financial companion who genuinely cares about user wellbeing.
 
 Financial Status: ${financialContext}
@@ -120,9 +113,16 @@ User: "${message}"
 Respond with genuine care and helpful guidance:`;
 
     // RAG STEP 3: Generate response only if no cache hit
-    const result = await model.generateContent(optimizedPrompt);
-    const response = await result.response;
-    let text = response.text();
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.9,
+      max_tokens: 350
+    });
+    let text = chatCompletion.choices[0]?.message.content || '';
 
     // Add contextual emotional enhancers (no emojis)
     const emotionalEnhancers = {
@@ -152,15 +152,15 @@ Respond with genuine care and helpful guidance:`;
 
     return NextResponse.json({
       message: text,
-      source: 'gemini_fresh',
+      source: 'groq_fresh',
       cached: false,
       timestamp: new Date().toISOString(),
     });
 
   } catch (error) {
-    console.error('Gemini API Error:', error);
-    
-    const emotionalErrorMessage = languageFallback === 'hi' 
+    console.error('Groq API Error:', error);
+
+    const emotionalErrorMessage = languageFallback === 'hi'
       ? 'मुझे खुशी होगी अगर मैं इस समय आपकी मदद कर सकूं, लेकिन तकनीकी समस्या है। कृपया फिर कोशिश करें।'
       : 'I wish I could help you right now, but I\'m having technical difficulties. Please try again in a moment.';
 

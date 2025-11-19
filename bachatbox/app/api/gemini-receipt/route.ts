@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// NEW: update to latest available model
+const MODEL_NAME = process.env.GEMINI_MODEL_NAME || 'gemini-2.5-flash';
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: NextRequest) {
@@ -17,7 +20,11 @@ export async function POST(request: NextRequest) {
     const imageBuffer = Buffer.from(await image.arrayBuffer());
     const base64Image = imageBuffer.toString('base64');
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // FIX: Use the latest model and apiVersion
+    const model = genAI.getGenerativeModel(
+      { model: MODEL_NAME },
+      { apiVersion: 'v1beta' }
+    );
 
     const prompt = `Analyze this receipt image and extract the following information in JSON format:
 
@@ -49,33 +56,33 @@ Return ONLY valid JSON, no additional text.`;
     ]);
 
     const response = await result.response;
-    const text = response.text();
-    
+    const text = await response.text();
+
     try {
       // Try to parse JSON from the response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const receiptData = JSON.parse(jsonMatch[0]);
-        
+
         // Validate the extracted data
         if (receiptData.amount && receiptData.type && receiptData.description) {
-          return NextResponse.json({ 
+          return NextResponse.json({
             message: 'Receipt processed successfully',
-            receiptData: receiptData
+            receiptData: receiptData,
           });
         }
       }
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         error: 'Could not extract reliable data from receipt',
-        message: 'Please try again or add manually'
+        message: 'Please try again or add manually',
       }, { status: 400 });
-      
+
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Could not parse receipt data',
-        message: 'Please try again or add manually'
+        message: 'Please try again or add manually',
       }, { status: 400 });
     }
 
