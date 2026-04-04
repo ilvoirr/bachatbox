@@ -156,8 +156,9 @@ export async function POST(req: NextRequest) {
     Be specific, caring, and use their actual numbers throughout. Make it feel like you really looked at their data!
     `;
 
+  // Update the model string here:
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash", // <-- Changed from 1.5
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.8, 

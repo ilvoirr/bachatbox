@@ -27,7 +27,8 @@ import {
   IconSparkles,
   IconBook,
   IconTrendingUp,
-  IconRefresh
+  IconRefresh,
+  IconShieldCheck
 } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -383,70 +384,17 @@ export default function AppPage() {
     setIsLoading(false);
     setIsTyping(false);
   };
-
-  const links = [
-    {
-      label: "Balance Sheet",
-      href: "/apppage",
-      icon: (
-        <IconReceipt className="h-7 w-7 shrink-0 text-neutral-700" />
-      ),
-      onClick: () => router.push('/apppage'),
-    },
-    {
-      label: "Visualise Stats",
-      href: "/visualise",
-      icon: (
-        <IconChartBar className="h-7 w-7 shrink-0 text-neutral-700" />
-      ),
-      onClick: () => router.push('/visualise'),
-    },
-    {
-      label: "AI Dashboard",
-      href: "/advice",
-      icon: (
-        <IconTable className="h-7 w-7 shrink-0 text-neutral-700" />
-      ),
-      onClick: () => router.push('/advice'),
-    },
-    {
-      label: "BudgetBot",
-      href: "/chatbot",
-      icon: (
-        <IconMessageCircle className="h-7 w-7 shrink-0 text-neutral-700" />
-      ),
-      onClick: () => router.push('/chatbot'),
-    },
-    {
-      label: "What-If Simulator",
-      href: "/simulator", 
-      icon: (
-        <IconSparkles className="h-7 w-7 shrink-0 text-neutral-700" />
-      ),
-      onClick: () => router.push('/simulator'),
-    },
-    {
-      label: "SplitWise",
-      href: "/splitwise",
-      icon: (
-        <IconUsers className="h-7 w-7 shrink-0 text-neutral-700" />
-      ),
-      onClick: () => router.push('/splitwise'),
-    },
-    {
-      label: "Financial Reads",
-      href: "/financial-reads",
-      icon: <IconBook className="h-7 w-7 shrink-0 text-neutral-700" />,
-      onClick: () => router.push('/financial-reads'),
-    },
-    {
-      label: "Stock Market",
-      href: "/investment",
-      icon: <IconTrendingUp className="h-7 w-7 shrink-0 text-neutral-700" />,
-      onClick: () => router.push('/investment'),
-    },
+const links = [
+    { label: "Balance Sheet", href: "/apppage", icon: <IconReceipt className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/apppage') },
+    { label: "Visualise Stats", href: "/visualise", icon: <IconChartBar className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/visualise') },
+    { label: "AI Dashboard", href: "/advice", icon: <IconTable className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/advice') },
+    { label: "BudgetBot", href: "/chatbot", icon: <IconMessageCircle className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/chatbot') },
+    { label: "What-If Simulator", href: "/simulator", icon: <IconSparkles className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/simulator') },
+    { label: "SplitWise", href: "/splitwise", icon: <IconUsers className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/splitwise') },
+    { label: "Financial Reads", href: "/financial-reads", icon: <IconBook className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/financial-reads') },
+    { label: "Stock Market", href: "/investment", icon: <IconTrendingUp className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/investment') },
+    { label: "Claim Radar", href: "/claimradar", icon: <IconShieldCheck className="h-7 w-7 shrink-0 text-black" />, onClick: () => router.push('/claimradar') },
   ];
-
   // Keep all your existing utility functions...
   const handleLanguageSwitch = useCallback((language: 'en' | 'hi') => {
     setCurrentLanguage(language);

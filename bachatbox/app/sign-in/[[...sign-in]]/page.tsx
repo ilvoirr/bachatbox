@@ -28,7 +28,7 @@ export default function SignInPage() {
             </div>
             <div className="flex justify-between items-center bg-[#f9fafb] px-3 py-2 rounded-md">
               <span className="text-gray-600 font-medium">Password</span>
-              <span className="font-mono text-gray-900">test123</span>
+              <span className="font-mono text-gray-900">touchgrassfast</span>
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-3 text-center">
