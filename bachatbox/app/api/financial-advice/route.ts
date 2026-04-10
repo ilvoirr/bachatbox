@@ -1,13 +1,16 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Initialize Groq instead of Gemini
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GROQ_API_KEY) {
       return NextResponse.json(
-        { error: 'Gemini API key not configured' },
+        { error: 'Groq API key not configured' },
         { status: 500 }
       );
     }
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
     // Explicitly cast these to help TypeScript know they are [string, number]
     const topSpendingCategory = sortedExpenses[0] as [string, number] | undefined;
     const secondHighest = sortedExpenses[1] as [string, number] | undefined;
-    const thirdHighest = sortedExpenses[2] as [string, number] | undefined;
+    const thirdHighest = sortedExpenses[2] as [string, number] | undefined; // Kept for future use if needed
 
     // Analyze spending frequency and patterns
     const expenseTransactions = transactions.filter((t: any) => t.type === 'expense');
@@ -156,18 +159,30 @@ export async function POST(req: NextRequest) {
     Be specific, caring, and use their actual numbers throughout. Make it feel like you really looked at their data!
     `;
 
-  // Update the model string here:
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash", // <-- Changed from 1.5
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.8, 
-      }
+    // ---------------------------------------------
+    // START OF GROQ INTEGRATION CHANGES
+    // ---------------------------------------------
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a financial advisor. You MUST respond in perfectly valid JSON. Do not include any markdown formatting like ```json or any conversational text outside the JSON object."
+        },
+        {
+          role: "user",
+          content: financialPrompt,
+        }
+      ],
+      // Llama 3.3 70B is currently Groq's best model for following complex reasoning and strict JSON formats
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.8,
+      response_format: { type: "json_object" }, // Enforces JSON output
     });
 
-    const result = await model.generateContent(financialPrompt);
-    const response = await result.response;
-    const adviceText = response.text();
+    const adviceText = completion.choices[0]?.message?.content || "{}";
+    // ---------------------------------------------
+    // END OF GROQ INTEGRATION CHANGES
+    // ---------------------------------------------
 
     let parsedAdvice;
     try {
@@ -185,9 +200,8 @@ export async function POST(req: NextRequest) {
       }
       
     } catch (parseError) {
-      console.error('JSON parsing failed, using enhanced fallback:', parseError);
+      console.warn('JSON parsing failed from LLM, using enhanced fallback:', parseError);
       
-      // FIX: Explicit casting here ensures 'topAmount' and 'secondAmount' are numbers, not unknown
       const getPersonalizedAdvice = () => {
         const topCategory = topSpendingCategory ? topSpendingCategory[0] : 'expenses';
         const topAmount = topSpendingCategory ? (topSpendingCategory[1] as number) : 0;
@@ -246,7 +260,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ advice: parsedAdvice });
   } catch (error) {
-    console.error('Gemini API Error:', error);
+    console.error('Groq API Error:', error);
     return NextResponse.json(
       { error: `Failed to generate advice: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
